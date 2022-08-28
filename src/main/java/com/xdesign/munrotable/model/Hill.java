@@ -1,6 +1,10 @@
 package com.xdesign.munrotable.model;
 
+import java.util.Arrays;
 import java.util.Objects;
+import java.util.Set;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 public final class Hill {
 
@@ -13,6 +17,7 @@ public final class Hill {
     private final Double height;
     private final String gridReference;
     private final Category category;
+
 
     public Hill(
         String name,

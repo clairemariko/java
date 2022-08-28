@@ -7,11 +7,15 @@ import com.xdesign.munrotable.dto.Sort;
 import com.xdesign.munrotable.dto.SortField;
 import com.xdesign.munrotable.dto.SortOrder;
 import com.xdesign.munrotable.model.Hill;
+import com.xdesign.munrotable.model.Hill.Category;
 
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
 import java.util.*;
+import java.util.function.Predicate;
+
+import org.springframework.stereotype.Service;
 
 import static com.xdesign.munrotable.model.Hill.Category.MUNRO;
 import static com.xdesign.munrotable.model.Hill.Category.TOP;
@@ -26,9 +30,9 @@ public final class HillSearchService {
 
     static {
         FIELD_COMPARATORS.put(SortField.HEIGHT, Comparator.comparing(
-            Hill::getHeight, Comparator.naturalOrder()));
+                Hill::getHeight, Comparator.naturalOrder()));
         FIELD_COMPARATORS.put(SortField.NAME, Comparator.comparing(
-            Hill::getName, String.CASE_INSENSITIVE_ORDER));
+                Hill::getName, String.CASE_INSENSITIVE_ORDER));
     }
 
     private final File csvFile;
@@ -39,17 +43,56 @@ public final class HillSearchService {
 
     public List<Hill> searchHills(HillSearchRequest request) {
         return loadHillsFromCsvFile(csvFile).stream()
-            .filter(hill -> true)
-            .limit(request.getLimit())
-            .sorted(buildComparator(request))
-            .collect(toList());
+                .filter(hill -> true)
+                .limit(request.getLimit())
+                .sorted(buildComparator(request))
+                .collect(toList());
+    }
+
+    // Filter by category TOP enum type
+    public List<Hill> searchHillsByCategoryTop(HillSearchRequest request, String category) {
+        return loadHillsFromCsvFile(csvFile).stream()
+                .filter(hill -> hill.getCategory().equals(Category.TOP))
+                .limit(request.getLimit())
+                .sorted(buildComparator(request))
+                .collect(toList());
+    }
+
+    // Filter by category Munroe enum type and height
+    public List<Hill> searchHillsByCategoryMunroeAndMaxHeight(HillSearchRequest request, String category,
+            Double maxHeight) {
+
+        return loadHillsFromCsvFile(csvFile).stream()
+                .filter(hill -> hill.getCategory().equals(Category.MUNRO) && hill.getHeight() <= maxHeight)
+                .limit(request.getLimit())
+                .sorted(buildComparator(request))
+                .collect(toList());
+    }
+
+    // Filter by category and min height 1200. Note a minimum height could be that
+    // so it can also equal to.
+    public List<Hill> searchHillsByCategoryAndMinHeight(HillSearchRequest request, String category, Double minHeight) {
+        return loadHillsFromCsvFile(csvFile).stream()
+                .filter(hill -> hill.getCategory().equals(Category.TOP) && hill.getHeight() >= minHeight)
+                .limit(request.getLimit())
+                .sorted(buildComparator(request))
+                .collect(toList());
+    }
+
+     // Filter by min and max height - is there a way to a 'between/range' in stream ?
+    public List<Hill> searchHillsByMinAndMaxHeight(HillSearchRequest request, Double minHeight, Double maxHeight) {
+        return loadHillsFromCsvFile(csvFile).stream()
+                .filter(hill -> hill.getHeight() <= maxHeight && hill.getHeight() >= minHeight)
+                .limit(request.getLimit())
+                .sorted(buildComparator(request))
+                .collect(toList());
     }
 
     private Comparator<Hill> buildComparator(HillSearchRequest request) {
         return request.getSortCriteria().stream()
-            .map(this::getComparator)
-            .reduce(Comparator::thenComparing)
-            .orElse((h1, h2) -> 0);
+                .map(this::getComparator)
+                .reduce(Comparator::thenComparing)
+                .orElse((h1, h2) -> 0);
     }
 
     private Comparator<Hill> getComparator(Sort sort) {
@@ -84,8 +127,8 @@ public final class HillSearchService {
         var hillFields = List.of(NAME_FIELD, HEIGHT_FIELD, GRID_REFERENCE_FIELD, CATEGORY_FIELD);
 
         return rowData.entrySet().stream()
-            .filter(e1 -> hillFields.contains(e1.getKey()))
-            .noneMatch(e2 -> e2.getValue().isBlank());
+                .filter(e1 -> hillFields.contains(e1.getKey()))
+                .noneMatch(e2 -> e2.getValue().isBlank());
     }
 
     private static boolean isDeletedHill(Map<String, String> rowData) {
